@@ -30,7 +30,11 @@ export function argdbg(arg, recurse = []) {
 export default function (client: ScramjetClient, self: typeof globalThis) {
 	const warn = console.warn;
 	self.$scramerr = function scramerr(e) {
-		warn("CAUGHT ERROR", e);
+		if (e instanceof Error && e.stack) {
+			warn("CAUGHT ERROR", e.message, "\n", e.stack);
+		} else {
+			warn("CAUGHT ERROR", e);
+		}
 	};
 
 	self.$scramdbg = function scramdbg(args, t) {
@@ -46,7 +50,7 @@ export default function (client: ScramjetClient, self: typeof globalThis) {
 				ctx.args[0] = new Proxy(ctx.args[0], {
 					apply(target, that, args) {
 						// console.warn("CAUGHT PROMISE REJECTION", args);
-						Reflect.apply(target, that, args);
+						return Reflect.apply(target, that, args);
 					},
 				});
 		},
