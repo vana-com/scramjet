@@ -5,6 +5,16 @@ import { ScramjetClient } from "@client/index";
 export default function (client: ScramjetClient, _self: typeof globalThis) {
 	client.Proxy("Worker", {
 		construct(ctx) {
+			if (
+				typeof ctx.args[0] === "string" &&
+				ctx.args[0].startsWith("blob:")
+			) {
+				// blob: URLs are in-memory and can't be fetched by the service
+				// worker. Pass through directly — the blob content was created
+				// by already-rewritten page code so it doesn't need rewriting.
+				return;
+			}
+
 			ctx.args[0] = rewriteUrl(ctx.args[0], client.meta) + "?dest=worker";
 
 			if (ctx.args[1] && ctx.args[1].type === "module") {

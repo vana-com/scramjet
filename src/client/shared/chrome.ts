@@ -34,13 +34,13 @@ export default function (client: ScramjetClient, self: any) {
 		del("SyncEvent");
 	}
 
-	// trustedtypes
+	// trustedtypes - delete Chrome-specific constructor types but keep
+	// trustedTypes factory so sites using CSP Trusted Types can create policies
 	del("TrustedHTML");
 	del("TrustedScript");
 	del("TrustedScriptURL");
 	del("TrustedTypePolicy");
 	del("TrustedTypePolicyFactory");
-	self.__defineGetter__("trustedTypes", () => undefined);
 
 	// whatever this is
 	del("Navigator.prototype.joinAdInterestGroup");
@@ -90,7 +90,11 @@ export default function (client: ScramjetClient, self: any) {
 	del("HIDConnectionEvent");
 	del("HIDInputReportEvent");
 
-	// Navigation API (not chrome only but it's really annoying to implement)
+	// Navigation API - must be deleted because Scramjet doesn't intercept
+	// navigation.currentEntry.url, exposing proxied URLs to client code.
+	// Frameworks like CanJS that feature-detect it will see broken URLs and
+	// fail to route. Deleting forces fallback to window.location (which
+	// Scramjet proxies correctly).
 	del("navigation");
 	del("NavigateEvent");
 	del("NavigationActivation");

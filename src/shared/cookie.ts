@@ -8,6 +8,7 @@ export type Cookie = {
 	expires?: string;
 	maxAge?: number;
 	domain?: string;
+	hostname?: string; // origin hostname for host-only cookies (no Domain attribute)
 	secure?: boolean;
 	httpOnly?: boolean;
 	sameSite?: "strict" | "lax" | "none";
@@ -27,13 +28,20 @@ export class CookieStore {
 				...parsed[0],
 			};
 
-			if (!cookie.domain) cookie.domain = "." + url.hostname;
-			if (!cookie.domain.startsWith(".")) cookie.domain = "." + cookie.domain;
+			if (!cookie.domain) {
+				if (cookie.name.startsWith("__Host-")) {
+					// __Host- cookies must not have a Domain attribute; store origin host for exact-match
+					cookie.hostname = url.hostname;
+				} else {
+					cookie.domain = "." + url.hostname;
+				}
+			}
+			if (cookie.domain && !cookie.domain.startsWith(".")) cookie.domain = "." + cookie.domain;
 			if (!cookie.path) cookie.path = "/";
 			if (!cookie.sameSite) cookie.sameSite = "lax";
 			if (cookie.expires) cookie.expires = cookie.expires.toString();
 
-			const id = `${cookie.domain}@${cookie.path}@${cookie.name}`;
+			const id = `${cookie.domain ?? cookie.hostname ?? ""}@${cookie.path}@${cookie.name}`;
 			this.cookies[id] = cookie;
 		}
 	}
@@ -46,7 +54,7 @@ export class CookieStore {
 
 		for (const cookie of cookies) {
 			if (cookie.expires && new Date(cookie.expires) < now) {
-				delete this.cookies[`${cookie.domain}@${cookie.path}@${cookie.name}`];
+				delete this.cookies[`${cookie.domain ?? cookie.hostname ?? ""}@${cookie.path}@${cookie.name}`];
 				continue;
 			}
 
@@ -54,7 +62,10 @@ export class CookieStore {
 			if (cookie.httpOnly && fromJs) continue;
 			if (!url.pathname.startsWith(cookie.path)) continue;
 
-			if (cookie.domain.startsWith(".")) {
+			if (!cookie.domain) {
+				// Host-only cookie: exact hostname match required
+				if (cookie.hostname && url.hostname !== cookie.hostname) continue;
+			} else if (cookie.domain.startsWith(".")) {
 				if (!url.hostname.endsWith(cookie.domain.slice(1))) continue;
 			}
 
