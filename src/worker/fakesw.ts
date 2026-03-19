@@ -41,12 +41,18 @@ export class FakeServiceWorker {
 	async fetch(request: Request): Promise<Response | false> {
 		const token = this.syncToken++;
 
+		// Convert body to ArrayBuffer for Safari/environments that
+		// don't support transferring ReadableStream via postMessage.
+		const body = request.body
+			? await request.clone().arrayBuffer()
+			: null;
+
 		const message: MessageW2R = {
 			scramjet$type: "fetch",
 			scramjet$token: token,
 			scramjet$request: {
 				url: request.url,
-				body: request.body,
+				body,
 				headers: Array.from(request.headers.entries()),
 				method: request.method,
 				mode: request.mode,
@@ -54,9 +60,7 @@ export class FakeServiceWorker {
 			},
 		};
 
-		const transfer = request.body ? [request.body] : [];
-
-		this.handle.postMessage(message, transfer);
+		this.handle.postMessage(message);
 
 		const { scramjet$response: r } = (await new Promise((resolve) => {
 			this.promises[token] = resolve;

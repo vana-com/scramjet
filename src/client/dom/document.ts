@@ -1,4 +1,5 @@
 import { rewriteHtml } from "@rewriters/html";
+import { unrewriteUrl } from "@rewriters/url";
 import { ScramjetClient } from "@client/index";
 
 export default function (client: ScramjetClient, _self: Self) {
@@ -30,8 +31,9 @@ export default function (client: ScramjetClient, _self: Self) {
 	});
 
 	client.Trap("Document.prototype.referrer", {
-		get() {
-			return client.url.toString();
+		get(ctx) {
+			const raw = ctx.get() as string;
+			return raw ? unrewriteUrl(raw) : raw;
 		},
 	});
 

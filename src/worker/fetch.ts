@@ -323,6 +323,16 @@ export async function handleFetch(
 		);
 		this.dispatchEvent(ev);
 
+		// Convert ReadableStream body to ArrayBuffer for environments
+		// that don't support transferring streams (Safari, some WASM transports).
+		if (
+			ev.body &&
+			typeof ev.body !== "string" &&
+			typeof (ev.body as ReadableStream).getReader === "function"
+		) {
+			ev.body = await new Response(ev.body as ReadableStream).arrayBuffer();
+		}
+
 		const response =
 			(await ev.response) ||
 			((await this.client.fetch(ev.url, {
@@ -451,23 +461,27 @@ async function handleResponse(
 	}
 
 	const maybeHeaders = responseHeaders["set-cookie"] || [];
-	for (const cookie in maybeHeaders) {
+	const cookieList =
+		maybeHeaders instanceof Array ? maybeHeaders : [maybeHeaders];
+	for (const cookie of cookieList) {
 		if (client) {
 			const promise = swtarget.dispatch(client, {
 				scramjet$type: "cookie",
 				cookie,
 				url: url.href,
 			});
-			if (destination !== "document" && destination !== "iframe") {
-				await promise;
+			try {
+				// Use a timeout to prevent cookie dispatch from blocking
+				// indefinitely when the client is unresponsive.
+				await Promise.race([
+					promise,
+					new Promise((resolve) => setTimeout(resolve, 250)),
+				]);
+			} catch {
+				// Ignore dispatch failures
 			}
 		}
 	}
-
-	await cookieStore.setCookies(
-		maybeHeaders instanceof Array ? maybeHeaders : [maybeHeaders],
-		url
-	);
 
 	for (const header in responseHeaders) {
 		// flatten everything past here

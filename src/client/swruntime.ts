@@ -94,11 +94,16 @@ function handleMessage(
 				responded = true;
 				(async () => {
 					response = await response;
+					// Convert body to ArrayBuffer for Safari/environments that
+					// don't support transferring ReadableStream via postMessage.
+					const body = response.body
+						? await response.arrayBuffer()
+						: null;
 					const message: MessageR2W = {
 						scramjet$type: "fetch",
 						scramjet$token: token,
 						scramjet$response: {
-							body: response.body,
+							body,
 							headers: Array.from(response.headers.entries()),
 							status: response.status,
 							statusText: response.statusText,
@@ -106,7 +111,7 @@ function handleMessage(
 					};
 
 					dbg.log("sw", "responding", message);
-					port.postMessage(message, [response.body]);
+					port.postMessage(message);
 				})();
 			};
 
@@ -135,14 +140,14 @@ function trustEvent(event: Event): Event {
 }
 
 export type TransferrableResponse = {
-	body: ReadableStream;
+	body: ReadableStream | ArrayBuffer | null;
 	headers: [string, string][];
 	status: number;
 	statusText: string;
 };
 
 export type TransferrableRequest = {
-	body: ReadableStream;
+	body: ReadableStream | ArrayBuffer | null;
 	headers: [string, string][];
 	destinitation: RequestDestination;
 	method: Request["method"];
