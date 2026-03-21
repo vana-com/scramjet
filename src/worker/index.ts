@@ -83,8 +83,7 @@ export class ScramjetServiceWorker extends EventTarget {
 
 			if (data.scramjet$type === "cookie") {
 				this.cookieStore.setCookies([data.cookie], new URL(data.url));
-				const db = await openDB<ScramjetDB>("$scramjet", 1);
-				await db.put("cookies", JSON.parse(this.cookieStore.dump()), "cookies");
+				await this.persistCookies();
 			}
 
 			if (data.scramjet$type === "loadConfig") {
@@ -129,6 +128,14 @@ export class ScramjetServiceWorker extends EventTarget {
 			setConfig(this.config);
 			await asyncSetWasm();
 		}
+	}
+
+	/**
+	 * Persists the current cookie store to IndexedDB.
+	 */
+	async persistCookies(): Promise<void> {
+		const db = await openDB<ScramjetDB>("$scramjet", 1);
+		await db.put("cookies", JSON.parse(this.cookieStore.dump()), "cookies");
 	}
 
 	/**

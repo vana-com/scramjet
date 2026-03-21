@@ -78,7 +78,10 @@ export class CookieStore {
 	}
 
 	load(cookies: string) {
-		if (typeof cookies === "object") return cookies;
+		if (typeof cookies === "object") {
+			this.cookies = cookies as unknown as Record<string, Cookie>;
+			return;
+		}
 		this.cookies = JSON.parse(cookies);
 	}
 

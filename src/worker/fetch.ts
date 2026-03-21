@@ -131,9 +131,32 @@ export async function handleFetch(
 		}
 
 		const url = new URL(unrewriteUrl(requestUrl));
+
 		// now that we're past unrewriting it's safe to add back the params
 		for (const [param, value] of Object.entries(extraParams)) {
 			url.searchParams.set(param, value);
+		}
+
+		// Unrewrite query parameter values that contain proxy-encoded paths.
+		// Sites like Google embed location.pathname into XHR query params
+		// (e.g. source-path=/service/https%3A%2F%2Fexample.com/foo → /foo).
+		// Must run AFTER extraParams are added since they may contain proxy URLs.
+		for (const [param, value] of [...url.searchParams.entries()]) {
+			if (value.includes(config.prefix)) {
+				try {
+					const fullUrl = new URL(
+						location.origin + (value.startsWith("/") ? "" : "/") + value
+					);
+					const unrewritten = unrewriteUrl(fullUrl.href);
+					const parsed = new URL(unrewritten);
+					url.searchParams.set(
+						param,
+						parsed.pathname + parsed.search + parsed.hash
+					);
+				} catch {
+					// leave unchanged
+				}
+			}
 		}
 
 		const meta: URLMeta = {
@@ -463,22 +486,18 @@ async function handleResponse(
 	const maybeHeaders = responseHeaders["set-cookie"] || [];
 	const cookieList =
 		maybeHeaders instanceof Array ? maybeHeaders : [maybeHeaders];
-	for (const cookie of cookieList) {
+	if (cookieList.length > 0) {
+		// Store cookies directly — do not depend on client round-trip
+		cookieStore.setCookies(cookieList, url);
+		await swtarget.persistCookies();
+		// Fire-and-forget dispatch to client for document.cookie sync
 		if (client) {
-			const promise = swtarget.dispatch(client, {
-				scramjet$type: "cookie",
-				cookie,
-				url: url.href,
-			});
-			try {
-				// Use a timeout to prevent cookie dispatch from blocking
-				// indefinitely when the client is unresponsive.
-				await Promise.race([
-					promise,
-					new Promise((resolve) => setTimeout(resolve, 250)),
-				]);
-			} catch {
-				// Ignore dispatch failures
+			for (const cookie of cookieList) {
+				swtarget.dispatch(client, {
+					scramjet$type: "cookie",
+					cookie,
+					url: url.href,
+				}).catch(() => {});
 			}
 		}
 	}
@@ -616,6 +635,8 @@ async function rewriteBody(
 	workertype: string,
 	cookieStore: CookieStore
 ): Promise<BodyType> {
+	const responseUrl = new URL(response.finalURL);
+
 	switch (destination) {
 		case "iframe":
 		case "document":
