@@ -45,9 +45,7 @@ export function rewriteUrl(url: string | URL, meta: URLMeta) {
 		);
 	} else if (url.startsWith("blob:")) {
 		return location.origin + config.prefix + url;
-	} else if (url.startsWith("data:")) {
-		return location.origin + config.prefix + url;
-	} else if (url.startsWith("mailto:") || url.startsWith("about:")) {
+	} else if (url.startsWith("data:") || url.startsWith("mailto:") || url.startsWith("about:")) {
 		return url;
 	} else {
 		let base = meta.base.href;
