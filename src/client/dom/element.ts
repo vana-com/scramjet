@@ -77,7 +77,7 @@ export default function (client: ScramjetClient, self: typeof window) {
 				},
 
 				set(value) {
-					return this.setAttribute(attr, value);
+					return this.setAttribute(attr, String(value));
 				},
 			});
 		}
@@ -176,7 +176,10 @@ export default function (client: ScramjetClient, self: typeof window) {
 
 	client.Proxy("Element.prototype.setAttribute", {
 		apply(ctx) {
-			const [name, value] = ctx.args;
+			const name = String(ctx.args[0]);
+			const value = String(ctx.args[1]);
+			ctx.args[0] = name;
+			ctx.args[1] = value;
 
 			const ruleList = htmlRules.find((rule) => {
 				const r = rule[name.toLowerCase()];
@@ -212,7 +215,10 @@ export default function (client: ScramjetClient, self: typeof window) {
 
 	client.Proxy("Element.prototype.setAttributeNS", {
 		apply(ctx) {
-			const [_namespace, name, value] = ctx.args;
+			const name = String(ctx.args[1]);
+			const value = String(ctx.args[2]);
+			ctx.args[1] = name;
+			ctx.args[2] = value;
 
 			const ruleList = htmlRules.find((rule) => {
 				const r = rule[name.toLowerCase()];

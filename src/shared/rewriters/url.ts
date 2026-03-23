@@ -31,6 +31,7 @@ export function unrewriteBlob(url: string) {
 
 export function rewriteUrl(url: string | URL, meta: URLMeta) {
 	if (url instanceof URL) url = url.toString();
+	else if (typeof url !== "string") url = String(url);
 
 	// Prevent double-wrapping: if URL is already a proxy URL, unrewrite first
 	const prefixed = location.origin + config.prefix;
@@ -65,6 +66,7 @@ export function rewriteUrl(url: string | URL, meta: URLMeta) {
 
 export function unrewriteUrl(url: string | URL) {
 	if (url instanceof URL) url = url.toString();
+	else if (typeof url !== "string") url = String(url);
 	// remove query string
 	// if (url.includes("?")) {
 	// 	url = url.split("?")[0];
