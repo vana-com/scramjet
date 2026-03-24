@@ -62,6 +62,7 @@ export type Trap<T> = {
 };
 
 export class ScramjetClient {
+	id: string;
 	locationProxy: any;
 	serviceWorker: ServiceWorkerContainer;
 	// epoxy: EpoxyClient;
@@ -89,6 +90,10 @@ export class ScramjetClient {
 	box: SingletonBox;
 
 	constructor(public global: typeof globalThis) {
+		this.id =
+			this.global.crypto?.randomUUID?.() ||
+			`scramjet-${Math.random().toString(36).slice(2)}`;
+
 		if (SCRAMJETCLIENT in global) {
 			console.error(
 				"attempted to initialize a scramjet client, but one is already loaded - this is very bad"

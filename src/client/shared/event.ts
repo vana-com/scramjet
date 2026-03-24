@@ -22,11 +22,18 @@ export default function (client: ScramjetClient, self: Self) {
 				return this.ports;
 			},
 			source() {
+				if (
+					typeof this.data === "object" &&
+					this.data !== null &&
+					"$scramjet$sourceId" in this.data
+				) {
+					const source = client.box.clientIds.get(
+						this.data.$scramjet$sourceId
+					);
+					if (source) return source;
+				}
+
 				if (this.source === null) return null;
-
-				// const scram: ScramjetClient = this.source[SCRAMJETCLIENT];
-
-				// if (scram) return scram.globalProxy;
 
 				return this.source;
 			},

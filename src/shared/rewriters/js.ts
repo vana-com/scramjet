@@ -114,8 +114,7 @@ export function rewriteJs(
 		console.warn(
 			"failed rewriting js for",
 			url || "(unknown)",
-			err.message,
-			js instanceof Uint8Array ? textDecoder.decode(js) : js
+			err.message
 		);
 		if (flagEnabled("allowInvalidJs", meta.base)) {
 			return js;

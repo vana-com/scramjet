@@ -677,8 +677,20 @@ async function rewriteBody(
 				response.finalURL,
 				meta
 			);
-		default:
+		default: {
+			// Fallback: rewrite JS responses that arrive with a non-"script" destination
+			// (e.g. scripts loaded inside nested iframes may have destination "" or "empty").
+			const ct = response.headers.get("content-type") || "";
+			if (ct.includes("javascript") || ct.includes("ecmascript")) {
+				return rewriteJs(
+					new Uint8Array(await response.arrayBuffer()),
+					response.finalURL,
+					meta,
+					workertype === "module"
+				) as unknown as ArrayBuffer;
+			}
 			return response.body;
+		}
 	}
 }
 

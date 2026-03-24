@@ -39,14 +39,20 @@ export default function (client: ScramjetClient) {
 				const callerGlobalThisProxied: Self = Function("return globalThis")();
 				const callerClient = callerGlobalThisProxied[SCRAMJETCLIENT];
 
-				// this WOULD be enough but the source argument of MessageEvent has to return the caller's window
-				// and if we just call it normally it would be coming from here, which WILL NOT BE THE CALLER'S because the accessor is from the parent
-				// so with the stolen function we wrap postmessage so the source will truly be the caller's window (remember that function is scramjet's!!!)
-				const wrappedPostMessage = Function("...args", "this(...args)");
+				// MessageEvent.source is tied to the realm that invokes postMessage.
+				// Execute the original function from the caller's realm while preserving
+				// the target window as `this`, otherwise replies can point back at the
+				// receiving window instead of the actual sender.
+				const invokePostMessage = Function(
+					"fn",
+					"...args",
+					"return fn.apply(this, args)"
+				);
 
 				ctx.args[0] = {
 					$scramjet$messagetype: "window",
 					$scramjet$origin: callerClient.url.origin,
+					$scramjet$sourceId: callerClient.id,
 					$scramjet$data: ctx.args[0],
 				};
 
@@ -54,7 +60,7 @@ export default function (client: ScramjetClient) {
 				if (typeof ctx.args[1] === "string") ctx.args[1] = "*";
 				if (typeof ctx.args[1] === "object") ctx.args[1].targetOrigin = "*";
 
-				ctx.return(wrappedPostMessage.call(ctx.fn, ...ctx.args));
+				ctx.return(invokePostMessage.call(ctx.this, ctx.fn, ...ctx.args));
 			},
 		});
 
